@@ -1,9 +1,15 @@
-FROM golang:1.11 AS builder
-RUN apt-get update
-RUN apt-get install libsystemd-dev
-RUN apt-get install -y ca-certificates
+FROM golang AS builder
 RUN mkdir /app
-ADD . /app/
+ADD . /app
 WORKDIR /app
-RUN GOOS=linux go build github.com/Azure/aks-diagnostic-tool/cmd/aks-diagnostic
-CMD ["./aks-diagnostic"]
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor github.com/Azure/aks-periscope/cmd/aks-periscope
+
+FROM alpine
+RUN apk --no-cache add ca-certificates
+RUN apk add curl openssl bash --no-cache
+ADD https://storage.googleapis.com/kubernetes-release/release/v1.16.0/bin/linux/amd64/kubectl /usr/local/bin/kubectl
+RUN chmod +x /usr/local/bin/kubectl
+RUN mkdir /app
+WORKDIR /app
+COPY --from=builder /app/aks-periscope .
+CMD ["./aks-periscope"]
