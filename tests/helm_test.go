@@ -1,4 +1,4 @@
-package tests
+package main
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 )
 
 func TestHelm(t *testing.T) {
-
 	output, err := utils.RunCommandOnContainer("helm", "list", "--all-namespaces")
 	if err != nil {
 		t.Errorf("Error: %s", err)
