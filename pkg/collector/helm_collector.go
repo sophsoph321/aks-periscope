@@ -30,7 +30,12 @@ func (collector *HelmCollector) Collect() error {
 		return err
 	}
 
-	output, err := utils.RunCommandOnContainer("curl", "-fsSl", "-o", "get_helm.sh", "https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3")
+	output, err := utils.RunCommandOnContainer("apk", "add", "curl", "openssl", "bash", "--no-cache")
+	if err != nil {
+		return err
+	}
+
+	output, err = utils.RunCommandOnContainer("curl", "-fsSl", "-o", "get_helm.sh", "https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3")
 	if err != nil {
 		return err
 	}

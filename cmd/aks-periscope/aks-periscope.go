@@ -27,13 +27,9 @@ func main() {
 
 	collectors := []interfaces.Collector{}
 	containerLogsCollector := collector.NewContainerLogsCollector(exporter)
-	collectors = append(collectors, containerLogsCollector)
 	networkOutboundCollector := collector.NewNetworkOutboundCollector(5, exporter)
-	collectors = append(collectors, networkOutboundCollector)
 	dnsCollector := collector.NewDNSCollector(exporter)
-	collectors = append(collectors, dnsCollector)
 	kubeObjectsCollector := collector.NewKubeObjectsCollector(exporter)
-	collectors = append(collectors, kubeObjectsCollector)
 	systemLogsCollector := collector.NewSystemLogsCollector(exporter)
 	ipTablesCollector := collector.NewIPTablesCollector(exporter)
 	nodeLogsCollector := collector.NewNodeLogsCollector(exporter)
@@ -42,8 +38,17 @@ func main() {
 	helmCollector := collector.NewHelmCollector(exporter)
 
 	if strings.EqualFold(clusterType, "connectedCluster") {
+		collectors = append(collectors, containerLogsCollector)
+		collectors = append(collectors, dnsCollector)
 		collectors = append(collectors, helmCollector)
+		collectors = append(collectors, kubeObjectsCollector)
+		collectors = append(collectors, networkOutboundCollector)
+
 	} else {
+		collectors = append(collectors, containerLogsCollector)
+		collectors = append(collectors, dnsCollector)
+		collectors = append(collectors, kubeObjectsCollector)
+		collectors = append(collectors, networkOutboundCollector)
 		collectors = append(collectors, systemLogsCollector)
 		collectors = append(collectors, ipTablesCollector)
 		collectors = append(collectors, nodeLogsCollector)
