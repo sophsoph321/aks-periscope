@@ -16,6 +16,7 @@ import (
 
 const (
 	maxContainerNameLength = 63
+	connectedCluster       = "connectedCluster"
 )
 
 // AzureBlobExporter defines an Azure Blob Exporter
@@ -29,13 +30,22 @@ func (exporter *AzureBlobExporter) Export(files []string) error {
 	if err != nil {
 		return err
 	}
+	containerName := ""
+	clusterType := os.Getenv("CLUSTER_TYPE")
 
-	containerName := strings.Replace(APIServerFQDN, ".", "-", -1)
-	len := strings.Index(containerName, "-hcp-")
-	if len == -1 {
-		len = maxContainerNameLength
+	if strings.EqualFold(clusterType, connectedCluster) {
+		containerName = APIServerFQDN
+		containerName = strings.ReplaceAll(containerName, ".", "")
+		containerName = strings.ReplaceAll(containerName, ":", "")
+		//containerName = strings.ReplaceAll(APIServerFQDN, ":", "")
+	} else {
+		containerName = strings.Replace(APIServerFQDN, ".", "-", -1)
+		len := strings.Index(containerName, "-hcp-")
+		if len == -1 {
+			len = maxContainerNameLength
+		}
+		containerName = strings.TrimRight(containerName[:len], "-")
 	}
-	containerName = strings.TrimRight(containerName[:len], "-")
 
 	ctx := context.Background()
 

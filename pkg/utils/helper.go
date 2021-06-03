@@ -11,6 +11,10 @@ import (
 	"strings"
 )
 
+const (
+	connectedCluster = "connectedCluster"
+)
+
 // GetHostName get host name
 func GetHostName() (string, error) {
 	hostname, err := RunCommandOnHost("cat", "/etc/hostname")
@@ -23,21 +27,27 @@ func GetHostName() (string, error) {
 
 // GetAPIServerFQDN gets the API Server FQDN from the kubeconfig file
 func GetAPIServerFQDN() (string, error) {
-	output, err := RunCommandOnHost("cat", "/var/lib/kubelet/kubeconfig")
+	clusterType := os.Getenv("CLUSTER_TYPE")
+	if strings.EqualFold(clusterType, connectedCluster) {
+		return "127.0.0.1:51865", nil
+	} else {
+		output, err := RunCommandOnHost("cat", "/var/lib/kubelet/kubeconfig")
 
-	if err != nil {
-		return "", fmt.Errorf("Can't open kubeconfig file: %+v", err)
-	}
-
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		index := strings.Index(line, "server: ")
-		if index >= 0 {
-			fqdn := line[index+len("server: "):]
-			fqdn = strings.Replace(fqdn, "https://", "", -1)
-			fqdn = strings.Replace(fqdn, ":443", "", -1)
-			return fqdn, nil
+		if err != nil {
+			return "", fmt.Errorf("Can't open kubeconfig file: %+v", err)
 		}
+
+		lines := strings.Split(output, "\n")
+		for _, line := range lines {
+			index := strings.Index(line, "server: ")
+			if index >= 0 {
+				fqdn := line[index+len("server: "):]
+				fqdn = strings.Replace(fqdn, "https://", "", -1)
+				fqdn = strings.Replace(fqdn, ":443", "", -1)
+				return fqdn, nil
+			}
+		}
+
 	}
 
 	return "", errors.New("Could not find server definitions in kubeconfig")
