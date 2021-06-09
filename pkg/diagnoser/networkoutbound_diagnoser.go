@@ -40,6 +40,10 @@ func NewNetworkOutboundDiagnoser(networkOutboundCollector *collector.NetworkOutb
 	}
 }
 
+func (diagnoser *NetworkOutboundDiagnoser) GetFiles() []string {
+	return diagnoser.diagnoserFiles
+}
+
 // Diagnose implements the interface method
 func (diagnoser *NetworkOutboundDiagnoser) Diagnose() error {
 	hostName, err := utils.GetHostName()

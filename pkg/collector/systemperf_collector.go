@@ -14,6 +14,10 @@ type SystemPerfCollector struct {
 
 var _ interfaces.Collector = &SystemPerfCollector{}
 
+func (collector *SystemPerfCollector) GetFiles() []string {
+	return collector.GetCollectorFiles()
+}
+
 // NewSystemPerfCollector is a constructor
 func NewSystemPerfCollector(exporter interfaces.Exporter) *SystemPerfCollector {
 	return &SystemPerfCollector{

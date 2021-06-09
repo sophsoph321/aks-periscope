@@ -13,9 +13,15 @@ import (
 	"github.com/Azure/aks-periscope/pkg/utils"
 )
 
+const (
+	connectedCluster = "connectedCluster"
+)
+
 func main() {
 	zipAndExportMode := true
-	exporter := &exporter.AzureBlobExporter{}
+	//exporter := &exporter.LocalMachineExporter{}
+	exporters := []interfaces.Exporter{}
+
 	var waitgroup sync.WaitGroup
 
 	err := utils.CreateCRD()
@@ -23,7 +29,19 @@ func main() {
 		log.Printf("Failed to create CRD: %+v", err)
 	}
 
+	filesToZip := []string{}
 	clusterType := os.Getenv("CLUSTER_TYPE")
+	isConnectedCluster := strings.EqualFold(clusterType, connectedCluster)
+	storageAccountName := os.Getenv("AZURE_BLOB_ACCOUNT_NAME")
+	sasTokenName := os.Getenv("AZURE_BLOB_SAS_KEY")
+
+	if isConnectedCluster && (len(storageAccountName) == 0 || len(sasTokenName) == 0) {
+		exporters = append(exporters, &exporter.LocalMachineExporter{})
+	} else {
+		exporters = append(exporters, &exporter.AzureBlobExporter{})
+	}
+
+	exporter := exporters[0]
 
 	collectors := []interfaces.Collector{}
 	containerLogsCollector := collector.NewContainerLogsCollector(exporter)
@@ -37,7 +55,7 @@ func main() {
 	systemPerfCollector := collector.NewSystemPerfCollector(exporter)
 	helmCollector := collector.NewHelmCollector(exporter)
 
-	if strings.EqualFold(clusterType, "connectedCluster") {
+	if isConnectedCluster {
 		collectors = append(collectors, containerLogsCollector)
 		collectors = append(collectors, dnsCollector)
 		collectors = append(collectors, helmCollector)
@@ -70,6 +88,14 @@ func main() {
 			if err != nil {
 				log.Printf("Collector: %s, export data failed: %+v\n", c.GetName(), err)
 			}
+
+			if isConnectedCluster {
+				for _, file := range c.GetFiles() {
+					filesToZip = append(filesToZip, file)
+					log.Printf("Collector: %s, added to zip file list", c.GetName())
+				}
+			}
+
 			waitgroup.Done()
 		}(c)
 	}
@@ -94,6 +120,14 @@ func main() {
 			if err != nil {
 				log.Printf("Diagnoser: %s, export data failed: %+v\n", d.GetName(), err)
 			}
+
+			if isConnectedCluster {
+				for _, file := range d.GetFiles() {
+					filesToZip = append(filesToZip, file)
+					log.Printf("Diagnoser: %s, added to zip file list", d.GetName())
+				}
+			}
+
 			waitgroup.Done()
 		}(d)
 	}
@@ -102,7 +136,7 @@ func main() {
 
 	if zipAndExportMode {
 		log.Print("Zip and export result files")
-		err := zipAndExport(exporter)
+		err := zipAndExport(exporter, filesToZip)
 		if err != nil {
 			log.Printf("Failed to zip and export result files: %+v", err)
 		}
@@ -112,29 +146,48 @@ func main() {
 }
 
 // zipAndExport zip the results and export
-func zipAndExport(exporter interfaces.Exporter) error {
+func zipAndExport(exporter interfaces.Exporter, filesToZip []string) error {
 	hostName, err := utils.GetHostName()
 	if err != nil {
+		log.Printf("hostname issue")
 		return err
 	}
 
 	creationTimeStamp, err := utils.GetCreationTimeStamp()
 	if err != nil {
+		log.Printf("timestamp issue")
 		return err
 	}
 
 	sourcePathOnHost := "/var/log/aks-periscope/" + strings.Replace(creationTimeStamp, ":", "-", -1) + "/" + hostName
 	zipFileOnHost := sourcePathOnHost + "/" + hostName + ".zip"
 	zipFileOnContainer := strings.TrimPrefix(zipFileOnHost, "/var/log")
+	clusterType := os.Getenv("CLUSTER_TYPE")
+	isConnectedCluster := strings.EqualFold(clusterType, connectedCluster)
 
-	_, err = utils.RunCommandOnHost("zip", "-r", zipFileOnHost, sourcePathOnHost)
-	if err != nil {
-		return err
-	}
+	if !isConnectedCluster {
+		_, err = utils.RunCommandOnHost("zip", "-r", zipFileOnHost, sourcePathOnHost)
+		if err != nil {
+			return err
+		}
 
-	err = exporter.Export([]string{zipFileOnContainer})
-	if err != nil {
-		return err
+		err = exporter.Export([]string{zipFileOnContainer})
+		if err != nil {
+			log.Printf("export issue")
+			return err
+		}
+	} else {
+		//output, err := utils.RunCommandOnHost("ls", sourcePathOnHost)
+		//if err != nil {
+		//	return err
+		//}
+		//filesToZip := strings.Split(output, "\n")
+		log.Printf("files on host: %s", filesToZip)
+		err = exporter.Export(filesToZip)
+		if err != nil {
+			log.Printf("export issue")
+			return err
+		}
 	}
 
 	return nil

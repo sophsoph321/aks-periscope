@@ -42,6 +42,10 @@ func NewNetworkOutboundCollector(collectIntervalInSeconds int, exporter interfac
 	}
 }
 
+func (collector *NetworkOutboundCollector) GetFiles() []string {
+	return collector.GetCollectorFiles()
+}
+
 // Collect implements the interface method
 func (collector *NetworkOutboundCollector) Collect() error {
 	APIServerFQDN, err := utils.GetAPIServerFQDN()

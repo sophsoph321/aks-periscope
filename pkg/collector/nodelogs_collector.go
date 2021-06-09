@@ -16,6 +16,10 @@ type NodeLogsCollector struct {
 
 var _ interfaces.Collector = &NodeLogsCollector{}
 
+func (collector *NodeLogsCollector) GetFiles() []string {
+	return collector.GetCollectorFiles()
+}
+
 // NewNodeLogsCollector is a constructor
 func NewNodeLogsCollector(exporter interfaces.Exporter) *NodeLogsCollector {
 	return &NodeLogsCollector{

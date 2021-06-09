@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +27,10 @@ func NewContainerLogsCollector(exporter interfaces.Exporter) *ContainerLogsColle
 	}
 }
 
+func (collector *ContainerLogsCollector) GetFiles() []string {
+	return collector.GetCollectorFiles()
+}
+
 // Collect implements the interface method
 func (collector *ContainerLogsCollector) Collect() error {
 	containerLogs := strings.Fields(os.Getenv("DIAGNOSTIC_CONTAINERLOGS_LIST"))
@@ -36,6 +41,7 @@ func (collector *ContainerLogsCollector) Collect() error {
 
 	output, err := utils.RunCommandOnHost("docker", "ps", "--format", "{{.Names}}")
 	if err != nil {
+		log.Printf("Error with docker")
 		return err
 	}
 

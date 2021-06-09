@@ -44,6 +44,10 @@ func NewNetworkConfigDiagnoser(dnsCollector *collector.DNSCollector, kubeletCmdC
 	}
 }
 
+func (diagnoser *NetworkConfigDiagnoser) GetFiles() []string {
+	return diagnoser.diagnoserFiles
+}
+
 // Diagnose implements the interface method
 func (diagnoser *NetworkConfigDiagnoser) Diagnose() error {
 	hostName, err := utils.GetHostName()
