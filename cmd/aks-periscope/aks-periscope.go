@@ -26,7 +26,18 @@ func main() {
 
 	err := utils.CreateCRD()
 	if err != nil {
-		log.Printf("Failed to create CRD: %+v", err)
+		log.Fatalf("Failed to create CRD: %v", err)
+	}
+
+	clusterType := os.Getenv("CLUSTER_TYPE")
+	isConnectedCluster := strings.EqualFold(clusterType, connectedCluster)
+	storageAccountName := os.Getenv("AZURE_BLOB_ACCOUNT_NAME")
+	sasTokenName := os.Getenv("AZURE_BLOB_SAS_KEY")
+
+	if isConnectedCluster && (len(storageAccountName) == 0 || len(sasTokenName) == 0) {
+		exporters = append(exporters, &exporter.LocalMachineExporter{})
+	} else {
+		exporters = append(exporters, &exporter.AzureBlobExporter{})
 	}
 
 	filesToZip := []string{}
@@ -40,6 +51,7 @@ func main() {
 	} else {
 		exporters = append(exporters, &exporter.AzureBlobExporter{})
 	}
+
 
 	exporter := exporters[0]
 
@@ -74,19 +86,23 @@ func main() {
 		collectors = append(collectors, systemPerfCollector)
 	}
 
+
 	for _, c := range collectors {
-		waitgroup.Add(1)
+		collectorGrp.Add(1)
 		go func(c interfaces.Collector) {
-			log.Printf("Collector: %s, collect data\n", c.GetName())
+			defer collectorGrp.Done()
+
+			log.Printf("Collector: %s, collect data", c.GetName())
 			err := c.Collect()
 			if err != nil {
-				log.Printf("Collector: %s, collect data failed: %+v\n", c.GetName(), err)
+				log.Printf("Collector: %s, collect data failed: %v", c.GetName(), err)
+				return
 			}
 
-			log.Printf("Collector: %s, export data\n", c.GetName())
+			log.Printf("Collector: %s, export data", c.GetName())
 			err = c.Export()
 			if err != nil {
-				log.Printf("Collector: %s, export data failed: %+v\n", c.GetName(), err)
+				log.Printf("Collector: %s, export data failed: %v", c.GetName(), err)
 			}
 
 			if isConnectedCluster {
@@ -97,28 +113,34 @@ func main() {
 			}
 
 			waitgroup.Done()
+
 		}(c)
 	}
 
-	waitgroup.Wait()
+	collectorGrp.Wait()
 
 	diagnosers := []interfaces.Diagnoser{}
 	diagnosers = append(diagnosers, diagnoser.NewNetworkConfigDiagnoser(dnsCollector, kubeletCmdCollector, exporter))
 	diagnosers = append(diagnosers, diagnoser.NewNetworkOutboundDiagnoser(networkOutboundCollector, exporter))
 
+	diagnoserGrp := new(sync.WaitGroup)
+
 	for _, d := range diagnosers {
-		waitgroup.Add(1)
+		diagnoserGrp.Add(1)
 		go func(d interfaces.Diagnoser) {
-			log.Printf("Diagnoser: %s, diagnose data\n", d.GetName())
+			defer diagnoserGrp.Done()
+
+			log.Printf("Diagnoser: %s, diagnose data", d.GetName())
 			err := d.Diagnose()
 			if err != nil {
-				log.Printf("Diagnoser: %s, diagnose data failed: %+v\n", d.GetName(), err)
+				log.Printf("Diagnoser: %s, diagnose data failed: %v", d.GetName(), err)
+				return
 			}
 
-			log.Printf("Diagnoser: %s, export data\n", d.GetName())
+			log.Printf("Diagnoser: %s, export data", d.GetName())
 			err = d.Export()
 			if err != nil {
-				log.Printf("Diagnoser: %s, export data failed: %+v\n", d.GetName(), err)
+				log.Printf("Diagnoser: %s, export data failed: %v", d.GetName(), err)
 			}
 
 			if isConnectedCluster {
@@ -129,20 +151,19 @@ func main() {
 			}
 
 			waitgroup.Done()
+
 		}(d)
 	}
 
-	waitgroup.Wait()
+	diagnoserGrp.Wait()
 
 	if zipAndExportMode {
 		log.Print("Zip and export result files")
 		err := zipAndExport(exporter, filesToZip)
 		if err != nil {
-			log.Printf("Failed to zip and export result files: %+v", err)
+			log.Fatalf("Failed to zip and export result files: %v", err)
 		}
 	}
-
-	select {}
 }
 
 // zipAndExport zip the results and export
