@@ -16,6 +16,10 @@ type KubeObjectsCollector struct {
 
 var _ interfaces.Collector = &KubeObjectsCollector{}
 
+func (collector *KubeObjectsCollector) GetFiles() []string {
+	return collector.GetCollectorFiles()
+}
+
 // NewKubeObjectsCollector is a constructor
 func NewKubeObjectsCollector(exporter interfaces.Exporter) *KubeObjectsCollector {
 	return &KubeObjectsCollector{

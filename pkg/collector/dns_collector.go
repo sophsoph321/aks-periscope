@@ -24,6 +24,10 @@ func NewDNSCollector(exporter interfaces.Exporter) *DNSCollector {
 	}
 }
 
+func (collector *DNSCollector) GetFiles() []string {
+	return collector.GetCollectorFiles()
+}
+
 // Collect implements the interface method
 func (collector *DNSCollector) Collect() error {
 	rootPath, err := utils.CreateCollectorDir(collector.GetName())

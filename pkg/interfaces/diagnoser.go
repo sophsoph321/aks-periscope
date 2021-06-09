@@ -4,6 +4,8 @@ package interfaces
 type Diagnoser interface {
 	GetName() string
 
+	GetFiles() []string
+
 	Diagnose() error
 
 	Export() error

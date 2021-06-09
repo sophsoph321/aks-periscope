@@ -4,6 +4,8 @@ package interfaces
 type Collector interface {
 	GetName() string
 
+	GetFiles() []string
+
 	Collect() error
 
 	Export() error

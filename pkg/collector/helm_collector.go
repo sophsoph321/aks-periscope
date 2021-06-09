@@ -24,6 +24,10 @@ func NewHelmCollector(exporter interfaces.Exporter) *HelmCollector {
 	}
 }
 
+func (collector *HelmCollector) GetFiles() []string {
+	return collector.GetCollectorFiles()
+}
+
 // Collect implements the interface method
 func (collector *HelmCollector) Collect() error {
 	rootPath, err := utils.CreateCollectorDir(collector.GetName())

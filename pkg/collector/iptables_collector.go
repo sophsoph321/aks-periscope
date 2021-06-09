@@ -24,6 +24,10 @@ func NewIPTablesCollector(exporter interfaces.Exporter) *IPTablesCollector {
 	}
 }
 
+func (collector *IPTablesCollector) GetFiles() []string {
+	return collector.GetCollectorFiles()
+}
+
 // Collect implements the interface method
 func (collector *IPTablesCollector) Collect() error {
 	rootPath, err := utils.CreateCollectorDir(collector.GetName())

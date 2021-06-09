@@ -24,6 +24,10 @@ func NewKubeletCmdCollector(exporter interfaces.Exporter) *KubeletCmdCollector {
 	}
 }
 
+func (collector *KubeletCmdCollector) GetFiles() []string {
+	return collector.GetCollectorFiles()
+}
+
 // Collect implements the interface method
 func (collector *KubeletCmdCollector) Collect() error {
 	rootPath, err := utils.CreateCollectorDir(collector.GetName())

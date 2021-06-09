@@ -14,6 +14,10 @@ type SystemLogsCollector struct {
 
 var _ interfaces.Collector = &SystemLogsCollector{}
 
+func (collector *SystemLogsCollector) GetFiles() []string {
+	return collector.GetCollectorFiles()
+}
+
 // NewSystemLogsCollector is a constructor
 func NewSystemLogsCollector(exporter interfaces.Exporter) *SystemLogsCollector {
 	return &SystemLogsCollector{
