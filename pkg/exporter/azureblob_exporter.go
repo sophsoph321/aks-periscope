@@ -30,12 +30,18 @@ func (exporter *AzureBlobExporter) Export(files []string) error {
 		return err
 	}
 
-	containerName := strings.Replace(APIServerFQDN, ".", "-", -1)
-	len := strings.Index(containerName, "-hcp-")
-	if len == -1 {
-		len = maxContainerNameLength
+	containerName := ""
+
+	if utils.IsConnectedCluster() {
+		containerName = APIServerFQDN
+	} else {
+		containerName = strings.Replace(APIServerFQDN, ".", "-", -1)
+		len := strings.Index(containerName, "-hcp-")
+		if len == -1 {
+			len = maxContainerNameLength
+		}
+		containerName = strings.TrimRight(containerName[:len], "-")
 	}
-	containerName = strings.TrimRight(containerName[:len], "-")
 
 	ctx := context.Background()
 

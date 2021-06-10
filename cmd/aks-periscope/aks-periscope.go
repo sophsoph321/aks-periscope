@@ -14,16 +14,16 @@ import (
 )
 
 func main() {
-	zipAndExportMode := true
-	exporter := &exporter.AzureBlobExporter{}
+	zipAndExportMode := false
+	exporters := []interfaces.Exporter{}
 
 	err := utils.CreateCRD()
 	if err != nil {
 		log.Fatalf("Failed to create CRD: %v", err)
 	}
 
-	clusterType := os.Getenv("CLUSTER_TYPE")
-
+	storageAccountName := os.Getenv("AZURE_BLOB_ACCOUNT_NAME")
+	sasTokenName := os.Getenv("AZURE_BLOB_SAS_KEY")
 	// Copies self-signed cert information to container if application is running on Azure Stack Cloud.
 	// We need the cert in order to communicate with the storage account.
 	if utils.IsAzureStackCloud() {
@@ -32,6 +32,13 @@ func main() {
 		}
 	}
 
+	if utils.IsConnectedCluster() && (len(storageAccountName) == 0 || len(sasTokenName) == 0) {
+		exporters = append(exporters, &exporter.LocalMachineExporter{})
+	} else {
+		exporters = append(exporters, &exporter.AzureBlobExporter{})
+	}
+
+	exporter := exporters[0]
 	collectors := []interfaces.Collector{}
 	containerLogsCollector := collector.NewContainerLogsCollector(exporter)
 	networkOutboundCollector := collector.NewNetworkOutboundCollector(5, exporter)
@@ -44,8 +51,8 @@ func main() {
 	systemPerfCollector := collector.NewSystemPerfCollector(exporter)
 	helmCollector := collector.NewHelmCollector(exporter)
 
-	if strings.EqualFold(clusterType, "connectedCluster") {
-		collectors = append(collectors, containerLogsCollector)
+	if utils.IsConnectedCluster() {
+		//collectors = append(collectors, containerLogsCollector)
 		collectors = append(collectors, dnsCollector)
 		collectors = append(collectors, helmCollector)
 		collectors = append(collectors, kubeObjectsCollector)
@@ -121,7 +128,10 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to zip and export result files: %v", err)
 		}
+	} else {
+		select {}
 	}
+
 }
 
 // zipAndExport zip the results and export
@@ -156,5 +166,5 @@ func zipAndExport(exporter interfaces.Exporter) error {
 
 	// TODO: remove this //nolint comment once the select{} has been removed
 	//nolint:govet
-	return nil
+	//return nil
 }

@@ -19,6 +19,7 @@ const (
 	// AzureStackCloudName references the value that will be under the key "cloud" in azure.json if the application is running on Azure Stack Cloud
 	// https://kubernetes-sigs.github.io/cloud-provider-azure/install/configs/#azure-stack-configuration -- See this documentation for the well-known cloud name.
 	AzureStackCloudName = "AzureStackCloud"
+	connectedCluster    = "connectedCluster"
 )
 
 // Azure defines Azure configuration
@@ -83,25 +84,46 @@ func GetHostName() (string, error) {
 	return strings.TrimSuffix(string(hostname), "\n"), nil
 }
 
+func IsConnectedCluster() bool {
+	clusterType := os.Getenv("CLUSTER_TYPE")
+	return strings.EqualFold(clusterType, connectedCluster)
+}
+
 // GetAPIServerFQDN gets the API Server FQDN from the kubeconfig file
 func GetAPIServerFQDN() (string, error) {
-	output, err := RunCommandOnHost("cat", "/var/lib/kubelet/kubeconfig")
+	if IsConnectedCluster() {
+		output, err := RunCommandOnHost("cat", "/etc/kubernetes/kubelet.conf")
+		if err != nil {
+			return "", fmt.Errorf("Can't open kubeconfig file: %+v", err)
+		}
+		lines := strings.Split(output, "\n")
+		for _, line := range lines {
+			index := strings.Index(line, "server: ")
+			if index >= 0 {
+				fqdn := line[index+len("server: "):]
+				fqdn = strings.Replace(fqdn, "https://", "", -1)
+				fqdn = strings.Replace(fqdn, ":6443", "", -1)
+				return fqdn, nil
+			}
+		}
+	} else {
+		output, err := RunCommandOnHost("cat", "/var/lib/kubelet/kubeconfig")
 
-	if err != nil {
-		return "", fmt.Errorf("Can't open kubeconfig file: %+v", err)
-	}
+		if err != nil {
+			return "", fmt.Errorf("Can't open kubeconfig file: %+v", err)
+		}
 
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		index := strings.Index(line, "server: ")
-		if index >= 0 {
-			fqdn := line[index+len("server: "):]
-			fqdn = strings.Replace(fqdn, "https://", "", -1)
-			fqdn = strings.Replace(fqdn, ":443", "", -1)
-			return fqdn, nil
+		lines := strings.Split(output, "\n")
+		for _, line := range lines {
+			index := strings.Index(line, "server: ")
+			if index >= 0 {
+				fqdn := line[index+len("server: "):]
+				fqdn = strings.Replace(fqdn, "https://", "", -1)
+				fqdn = strings.Replace(fqdn, ":443", "", -1)
+				return fqdn, nil
+			}
 		}
 	}
-
 	return "", errors.New("Could not find server definitions in kubeconfig")
 }
 
