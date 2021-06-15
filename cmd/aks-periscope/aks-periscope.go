@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	zipAndExportMode := true
+	//zipAndExportMode := true
 	exporter := &exporter.AzureBlobExporter{}
 
 	err := utils.CreateCRD()
@@ -45,7 +45,7 @@ func main() {
 	helmCollector := collector.NewHelmCollector(exporter)
 
 	if strings.EqualFold(clusterType, "connectedCluster") {
-		collectors = append(collectors, containerLogsCollector)
+		//collectors = append(collectors, containerLogsCollector)
 		collectors = append(collectors, dnsCollector)
 		collectors = append(collectors, helmCollector)
 		collectors = append(collectors, kubeObjectsCollector)
@@ -115,13 +115,13 @@ func main() {
 
 	diagnoserGrp.Wait()
 
-	if zipAndExportMode {
-		log.Print("Zip and export result files")
-		err := zipAndExport(exporter)
-		if err != nil {
-			log.Fatalf("Failed to zip and export result files: %v", err)
-		}
-	}
+	//if zipAndExportMode {
+	//	log.Print("Zip and export result files")
+	//	err := zipAndExport(exporter)
+	//	if err != nil {
+	//		log.Fatalf("Failed to zip and export result files: %v", err)
+	//	}
+	//}
 }
 
 // zipAndExport zip the results and export
